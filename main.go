@@ -1,21 +1,12 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
-)
-
-var (
-	//go:embed templates
-	res embed.FS
-
-	pages = map[string]string{
-		"/": "templates/index.tmpl.html",
-	}
+	"path"
+	"strings"
 )
 
 func main() {
@@ -25,30 +16,26 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		page, ok := pages[r.URL.Path]
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		tpl, err := template.ParseFS(res, page)
-		if err != nil {
-			log.Printf("page %s not found in pages cache...", r.RequestURI)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	staticFilePath := "./static"
+	fs := http.FileServer(http.Dir(staticFilePath))
 
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		data := map[string]interface{}{
-			"userAgent": r.UserAgent(),
-		}
-		if err := tpl.Execute(w, data); err != nil {
-			return
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frame-Options", "DENY")
+
+		if _, err := os.Stat(staticFilePath + r.RequestURI); os.IsNotExist(err) {
+			w.Header().Set("Cache-Control", "no-cache")
+
+			http.StripPrefix(r.URL.Path, fs).ServeHTTP(w, r)
+		} else {
+			// Set static files involving html, js, or empty cache to "no-cache", which means they must be validated
+			// for changes before the browser uses the cache
+			if base := path.Base(r.URL.Path); strings.Contains(base, "html") || strings.Contains(base, "js") || base == "." || base == "/" {
+				w.Header().Set("Cache-Control", "no-cache")
+			}
+
+			fs.ServeHTTP(w, r)
 		}
 	})
-
-	http.FileServer(http.FS(res))
 
 	log.Println("server started...")
 	err := http.ListenAndServe(":8080", nil)
