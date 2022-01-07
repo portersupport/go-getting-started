@@ -51,7 +51,7 @@ func main() {
 	http.FileServer(http.FS(res))
 
 	log.Println("server started...")
-	err := http.ListenAndServe(":8088", nil)
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(err)
 	}
