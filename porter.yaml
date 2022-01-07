@@ -1,6 +1,8 @@
 version: v1
 resources:
   - name: go-sample
+    source: 
+      name: web
     config:
       build:
         method: pack
