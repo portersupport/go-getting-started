@@ -1,0 +1,12 @@
+version: v1
+resources:
+  - name: go-sample
+    config:
+      build:
+        method: pack
+      values:
+        port: 8080
+        container:
+          env:
+            normal:
+              BPE_PORT: 8080

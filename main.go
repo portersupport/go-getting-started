@@ -1,27 +1,58 @@
 package main
 
 import (
+	"embed"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
+)
 
-	"github.com/gin-gonic/gin"
+var (
+	//go:embed templates
+	res embed.FS
+
+	pages = map[string]string{
+		"/": "templates/index.tmpl.html",
+	}
 )
 
 func main() {
 	port := os.Getenv("PORT")
-
 	if port == "" {
-		log.Fatal("$PORT must be set")
+		fmt.Println("$PORT must be set")
+		return
 	}
 
-	router := gin.New()
-	router.Use(gin.Logger())
-	router.LoadHTMLGlob("templates/*.tmpl.html")
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		page, ok := pages[r.URL.Path]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		tpl, err := template.ParseFS(res, page)
+		if err != nil {
+			log.Printf("page %s not found in pages cache...", r.RequestURI)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl.html", nil)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		data := map[string]interface{}{
+			"userAgent": r.UserAgent(),
+		}
+		if err := tpl.Execute(w, data); err != nil {
+			return
+		}
 	})
 
-	router.Run(":" + port)
+	http.FileServer(http.FS(res))
+
+	log.Println("server started...")
+	err := http.ListenAndServe(":8088", nil)
+	if err != nil {
+		panic(err)
+	}
 }
