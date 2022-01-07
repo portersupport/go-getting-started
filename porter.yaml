@@ -7,8 +7,9 @@ resources:
       build:
         method: pack
       values:
-        port: 8080
         container:
+          command: go-getting-started
+          port: 8080
           env:
             normal:
               BPE_PORT: "8080"
