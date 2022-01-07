@@ -13,4 +13,4 @@ resources:
           env:
             normal:
               BPE_PORT: "8080"
-              # BP_KEEP_FILES: "static/*"
+              BP_KEEP_FILES: "static/*"
